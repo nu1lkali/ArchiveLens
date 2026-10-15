@@ -176,16 +176,34 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
               const Divider(height: 24),
 
-              // ---------- 删除 ----------
-              SwitchListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: const Text('删除时先移入回收站'),
-                subtitle: const Text(
-                    'UNC 网络路径不支持回收站，会自动降级为彻底删除',
-                    style: TextStyle(fontSize: 11)),
-                value: s.useRecycleBin,
-                onChanged: (v) => s.setUseRecycleBin(v),
+              // ---------- 删除方式 ----------
+              const _Section('删除方式'),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Center(
+                          child: Text('移入回收站', style: TextStyle(fontSize: 12))),
+                      selected: s.useRecycleBin,
+                      onSelected: (_) => s.setUseRecycleBin(true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Center(
+                          child: Text('直接删除', style: TextStyle(fontSize: 12))),
+                      selected: !s.useRecycleBin,
+                      onSelected: (_) => s.setUseRecycleBin(false),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '选「移入回收站」后，删除的文件可在系统的回收站里找回。'
+                '网络/共享(UNC)路径不支持回收站，会自动按「直接删除」处理。',
+                style: TextStyle(fontSize: 11),
               ),
 
               const Divider(height: 24),

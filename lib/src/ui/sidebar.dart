@@ -373,14 +373,19 @@ class _SidebarState extends State<Sidebar> {
   Future<void> _confirmCleanup(
       BuildContext context, LibraryController c, bool selectedOnly) async {
     final count = selectedOnly ? c.selected.length : c.dislikedCount;
+    final toBin = c.settings.useRecycleBin;
+    final dest = toBin
+        ? '移入回收站（可在回收站找回）'
+        : '从磁盘彻底删除（不可撤销）';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认删除'),
         content: Text(
           selectedOnly
-              ? '将从磁盘删除 $count 个压缩包，此操作不可撤销。'
-              : '将删除所有标记为「待删」的 $count 个压缩包，此操作不可撤销。',
+              ? '将把选中的 $count 个压缩包$dest。'
+                  '${toBin ? 'UNC 网络路径仍会直接删除。' : ''}'
+              : '将删除所有标记为「待删」的 $count 个压缩包，$dest。',
         ),
         actions: [
           TextButton(

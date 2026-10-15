@@ -32,6 +32,9 @@ dependencies:
   # 集合工具（排序等）
   collection: ^1.17.1
 
+  # 原生内存分配（回收站 SHFileOperation 用）
+  ffi: ^2.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

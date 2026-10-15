@@ -54,12 +54,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _pickFolder() async {
+    final c = context.read<LibraryController>();
     final dir = await FilePicker.platform.getDirectoryPath(
       dialogTitle: '选择图片压缩包根目录',
       lockParentWindow: true,
     );
     if (dir == null || !mounted) return;
-    final c = context.read<LibraryController>();
     await c.scan(dir);
   }
 
@@ -323,11 +323,16 @@ class _Header extends StatelessWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, LibraryController c, ArchiveItem item) async {
+    final toBin = c.settings.useRecycleBin;
+    final dest = toBin
+        ? '移入回收站（可在回收站找回）'
+        : '从磁盘彻底删除（不可撤销）';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认删除'),
-        content: Text('将从磁盘彻底删除：\n${item.name}\n\n此操作不可撤销。'),
+        content: Text('将$dest：\n${item.name}'
+            '${toBin ? '\n\nUNC 网络路径仍会直接删除。' : ''}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
