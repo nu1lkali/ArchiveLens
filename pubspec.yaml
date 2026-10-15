@@ -1,0 +1,41 @@
+name: archive_lens
+description: 本地图片压缩包（zip/rar/7z）管理与筛选工具 —— 不解压、按需流式读取缩略图
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 图标
+  cupertino_icons: ^1.0.2
+
+  # 状态管理
+  provider: ^6.0.5
+
+  # 目录选择（Windows 文件夹对话框）
+  file_picker: ^6.1.1
+
+  # 路径处理
+  path: ^1.8.3
+
+  # 缓存 / 配置目录
+  path_provider: ^2.1.1
+
+  # 设置持久化
+  shared_preferences: ^2.2.1
+
+  # 集合工具（排序等）
+  collection: ^1.17.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
