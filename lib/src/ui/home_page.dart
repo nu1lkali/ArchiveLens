@@ -8,6 +8,7 @@ import '../models.dart';
 import '../services/drop_service.dart';
 import '../state/library_controller.dart';
 import '../utils/format.dart';
+import 'app_dropdown.dart';
 import 'app_shortcuts.dart';
 import 'image_grid.dart';
 import 'settings_dialog.dart';
@@ -58,7 +59,8 @@ class _HomePageState extends State<HomePage> {
       lockParentWindow: true,
     );
     if (dir == null || !mounted) return;
-    await context.read<LibraryController>().scan(dir);
+    final c = context.read<LibraryController>();
+    await c.scan(dir);
   }
 
   @override
@@ -360,11 +362,9 @@ class _ImageSortControl extends StatelessWidget {
       children: [
         const Icon(Icons.sort, size: 16),
         const SizedBox(width: 4),
-        DropdownButton<ImageSort>(
+        AppDropdown<ImageSort>(
           value: sort,
-          isDense: true,
-          underline: const SizedBox(),
-          style: const TextStyle(fontSize: 12),
+          tooltip: '图片网格排序',
           items: const [
             DropdownMenuItem(value: ImageSort.name, child: Text('名称')),
             DropdownMenuItem(value: ImageSort.date, child: Text('日期')),

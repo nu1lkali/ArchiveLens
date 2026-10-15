@@ -36,6 +36,11 @@ const List<ShortcutGroup> kShortcutGroups = [
     ShortcutEntry('3', '随机排序'),
     ShortcutEntry('R', '换一批随机顺序'),
   ]),
+  ShortcutGroup('列表排序（左侧清单）', [
+    ShortcutEntry('Alt + 1  /  2  /  3  /  4', '名称 / 修改时间 / 大小 / 图片数'),
+    ShortcutEntry('Alt + 5', '随机打乱列表'),
+    ShortcutEntry('Shift + R', '换一批列表随机顺序'),
+  ]),
   ShortcutGroup('批量与清理', [
     ShortcutEntry('Ctrl + A', '全选当前列表'),
     ShortcutEntry('Esc', '清空选择'),
@@ -47,6 +52,15 @@ const List<ShortcutGroup> kShortcutGroups = [
     ShortcutEntry('← →', '大图预览内翻页'),
     ShortcutEntry('Esc', '关闭大图预览'),
   ]),
+];
+
+/// Alt + 1..5 对应的列表排序，顺序和侧边栏下拉框保持一致
+const List<SortMode> _kArchiveSortOrder = [
+  SortMode.name,
+  SortMode.modified,
+  SortMode.size,
+  SortMode.count,
+  SortMode.random,
 ];
 
 /// 全局快捷键作用域。
@@ -133,6 +147,13 @@ class AppShortcutScope extends StatelessWidget {
             controller.openRelative(1);
             return _handled();
           }
+          // Alt + 1..5：切换左侧压缩包列表排序（顺序与下拉框一致）
+          final idx = _altDigitIndex(key);
+          if (idx != null && idx < _kArchiveSortOrder.length) {
+            final m = _kArchiveSortOrder[idx];
+            controller.setSort(m, asc: controller.sortMode == m ? null : true);
+            return _handled();
+          }
           return KeyEventResult.ignored;
         }
 
@@ -150,6 +171,11 @@ class AppShortcutScope extends StatelessWidget {
         }
         if (key == LogicalKeyboardKey.delete) {
           _mark(context, MarkStatus.disliked);
+          return _handled();
+        }
+
+        if (shift && char == 'r') {
+          controller.reshuffleArchives();
           return _handled();
         }
 
@@ -180,6 +206,20 @@ class AppShortcutScope extends StatelessWidget {
       },
       child: child,
     );
+  }
+
+  /// Alt + 数字 → 排序模式下标（1 起），不是数字键返回 null
+  static int? _altDigitIndex(LogicalKeyboardKey key) {
+    const digits = <LogicalKeyboardKey>[
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+      LogicalKeyboardKey.digit5,
+      LogicalKeyboardKey.digit6,
+    ];
+    final i = digits.indexOf(key);
+    return i < 0 ? null : i;
   }
 
   void _rescan(BuildContext context) {

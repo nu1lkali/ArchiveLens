@@ -17,6 +17,8 @@ class SettingsService extends ChangeNotifier {
   static const _kViewerWidth = 'viewer_width';
   static const _kImageSort = 'image_sort';
   static const _kImageSortAsc = 'image_sort_asc';
+  static const _kArchiveSort = 'archive_sort';
+  static const _kArchiveSortAsc = 'archive_sort_asc';
 
   SettingsService._(this._prefs);
 
@@ -127,6 +129,23 @@ class SettingsService extends ChangeNotifier {
 
   Future<void> setImageSortAscending(bool v) async {
     await _prefs.setBool(_kImageSortAsc, v);
+    notifyListeners();
+  }
+
+  // ---------------- 压缩包列表排序（同样会被记忆） ----------------
+
+  /// 0=名称 1=大小 2=图片数 3=修改时间 4=随机，取值见 `SortMode`
+  int get archiveSortIndex => _prefs.getInt(_kArchiveSort) ?? 0;
+
+  Future<void> setArchiveSortIndex(int v) async {
+    await _prefs.setInt(_kArchiveSort, v);
+    notifyListeners();
+  }
+
+  bool get archiveSortAscending => _prefs.getBool(_kArchiveSortAsc) ?? true;
+
+  Future<void> setArchiveSortAscending(bool v) async {
+    await _prefs.setBool(_kArchiveSortAsc, v);
     notifyListeners();
   }
 }

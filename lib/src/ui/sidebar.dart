@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models.dart';
 import '../state/library_controller.dart';
 import '../utils/format.dart';
+import 'app_dropdown.dart';
 
 /// 左侧边栏：路径选择 / 搜索 / 过滤 / 压缩包列表 / 批量操作
 class Sidebar extends StatefulWidget {
@@ -190,11 +191,10 @@ class _SidebarState extends State<Sidebar> {
             children: [
               const Text('排序', style: TextStyle(fontSize: 11)),
               const SizedBox(width: 6),
-              DropdownButton<SortMode>(
+              AppDropdown<SortMode>(
                 value: c.sortMode,
-                isDense: true,
-                underline: const SizedBox(),
-                style: const TextStyle(fontSize: 11),
+                fontSize: 11,
+                tooltip: '压缩包列表排序',
                 items: const [
                   DropdownMenuItem(
                       value: SortMode.name, child: Text('名称')),
@@ -204,19 +204,29 @@ class _SidebarState extends State<Sidebar> {
                       value: SortMode.size, child: Text('大小')),
                   DropdownMenuItem(
                       value: SortMode.count, child: Text('图片数')),
+                  DropdownMenuItem(
+                      value: SortMode.random, child: Text('随机打乱')),
                 ],
                 onChanged: (v) => v == null
                     ? null
                     : c.setSort(v, asc: c.sortMode == v ? null : true),
               ),
-              IconButton(
-                icon: Icon(c.sortAscending
-                    ? Icons.arrow_upward
-                    : Icons.arrow_downward,
-                    size: 16),
-                tooltip: '升序 / 降序',
-                onPressed: () => c.setSort(c.sortMode),
-              ),
+              // 随机排序下升降序没有意义，把箭头换成「换一批」
+              if (c.sortMode == SortMode.random)
+                IconButton(
+                  icon: const Icon(Icons.shuffle, size: 16),
+                  tooltip: '换一批随机顺序',
+                  onPressed: c.reshuffleArchives,
+                )
+              else
+                IconButton(
+                  icon: Icon(c.sortAscending
+                      ? Icons.arrow_upward
+                      : Icons.arrow_downward,
+                      size: 16),
+                  tooltip: '升序 / 降序',
+                  onPressed: () => c.setSort(c.sortMode),
+                ),
               const Spacer(),
               Text('${c.visible.length} 项',
                   style: const TextStyle(fontSize: 11)),

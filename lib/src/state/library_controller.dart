@@ -16,7 +16,9 @@ import '../services/thumbnail_service.dart';
 
 enum LibraryFilter { all, liked, disliked, unmarked }
 
-enum SortMode { name, size, count, modified }
+/// 左侧压缩包列表的排序方式。
+/// 注意：枚举顺序即持久化索引，新增值只能追加在末尾。
+enum SortMode { name, size, count, modified, random }
 
 /// 全局状态管理（Provider）。
 ///
@@ -53,19 +55,26 @@ class LibraryController extends ChangeNotifier {
 
   String search = '';
   LibraryFilter filter = LibraryFilter.all;
-  SortMode sortMode = SortMode.name;
-  bool sortAscending = true;
 
-  /// 右侧图片网格的排序方式（持久化在 SettingsService 里，重启自动恢复）
-  ImageSort get imageSort {
-    final i = settings.imageSortIndex;
-    return i >= 0 && i < ImageSort.values.length ? ImageSort.values[i] : ImageSort.name;
-  }
+  // ---- 左侧压缩包列表排序（本地字段，切完立刻生效；同时异步落盘记忆）----
+  SortMode _sortMode = SortMode.name;
+  bool _sortAscending = true;
 
-  bool get imageSortAscending => settings.imageSortAscending;
+  /// 列表随机排序的种子：固定种子 → 重建 Widget 时顺序不会跳变
+  int listSortSeed = 1;
+
+  SortMode get sortMode => _sortMode;
+  bool get sortAscending => _sortAscending;
+
+  // ---- 右侧图片网格排序（同样本地字段 + 异步落盘）----
+  ImageSort _imageSort = ImageSort.name;
+  bool _imageSortAscending = true;
 
   /// 随机排序的种子。用固定种子保证重建 Widget 时顺序不乱
   int imageSortSeed = 1;
+
+  ImageSort get imageSort => _imageSort;
+  bool get imageSortAscending => _imageSortAscending;
 
   /// 每次切换压缩包都会自增，用于让「上一包还没加载完的缩略图」作废
   int generation = 0;
@@ -99,6 +108,9 @@ class LibraryController extends ChangeNotifier {
       baseDir: dir,
     );
 
+    // 恢复上次的排序状态（列表排序 / 图片排序）
+    _restoreSortState();
+
     // 恢复上次的扫描结果
     final snap = await indexStore.load();
     if (snap != null && snap.items.isNotEmpty) {
@@ -112,6 +124,25 @@ class LibraryController extends ChangeNotifier {
       unawaited(_verifyExistence());
     }
     settings.addListener(_onSettingsChanged);
+  }
+
+  /// 从设置里恢复两种排序状态。索引越界（比如旧版本残留）时回落默认值
+  void _restoreSortState() {
+    final ai = settings.archiveSortIndex;
+    _sortMode = (ai >= 0 && ai < SortMode.values.length)
+        ? SortMode.values[ai]
+        : SortMode.name;
+    _sortAscending = settings.archiveSortAscending;
+
+    final ii = settings.imageSortIndex;
+    _imageSort = (ii >= 0 && ii < ImageSort.values.length)
+        ? ImageSort.values[ii]
+        : ImageSort.name;
+    _imageSortAscending = settings.imageSortAscending;
+
+    // 记住「用了随机」但不记住具体那一次的顺序：每次启动重新洗一遍牌
+    if (_sortMode == SortMode.random) listSortSeed = _newSeed();
+    if (_imageSort == ImageSort.random) imageSortSeed = _newSeed();
   }
 
   void _onSettingsChanged() {
@@ -239,12 +270,18 @@ class LibraryController extends ChangeNotifier {
       }
     }).toList();
 
+    // 随机：固定种子打乱（同一种子下顺序稳定，重建 Widget 不会跳变）
+    if (_sortMode == SortMode.random) {
+      list.shuffle(Random(listSortSeed));
+      return list;
+    }
+
     int cmpName(ArchiveItem a, ArchiveItem b) =>
         a.name.toLowerCase().compareTo(b.name.toLowerCase());
 
     list.sort((a, b) {
       int c;
-      switch (sortMode) {
+      switch (_sortMode) {
         case SortMode.name:
           c = cmpName(a, b);
           break;
@@ -257,8 +294,11 @@ class LibraryController extends ChangeNotifier {
         case SortMode.modified:
           c = a.modified.compareTo(b.modified);
           break;
+        case SortMode.random:
+          c = 0; // 已在上面提前处理
+          break;
       }
-      return sortAscending ? c : -c;
+      return _sortAscending ? c : -c;
     });
     return list;
   }
@@ -305,23 +345,33 @@ class LibraryController extends ChangeNotifier {
   }
 
   void setImageSort(ImageSort s) {
-    if (imageSort == s) return;
+    if (_imageSort == s) {
+      // 已经是「随机」时再选一次随机 = 换一批
+      if (s == ImageSort.random) reshuffleImages();
+      return;
+    }
+    _imageSort = s;
+    if (s == ImageSort.random) imageSortSeed = _newSeed();
     unawaited(settings.setImageSortIndex(s.index));
     notifyListeners();
   }
 
   void setImageSortAscending(bool asc) {
-    if (imageSortAscending == asc) return;
+    if (_imageSortAscending == asc) return;
+    _imageSortAscending = asc;
     unawaited(settings.setImageSortAscending(asc));
     notifyListeners();
   }
 
-  /// 换一批随机顺序
+  /// 换一批随机顺序（图片网格）
   void reshuffleImages() {
+    _imageSort = ImageSort.random;
+    imageSortSeed = _newSeed();
     unawaited(settings.setImageSortIndex(ImageSort.random.index));
-    imageSortSeed = DateTime.now().microsecondsSinceEpoch & 0x7FFFFFFF;
     notifyListeners();
   }
+
+  static int _newSeed() => DateTime.now().microsecondsSinceEpoch & 0x7FFFFFFF;
 
   void setSearch(String v) {
     search = v;
@@ -333,13 +383,39 @@ class LibraryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 切换左侧压缩包列表的排序方式。
+  ///
+  /// - 换一种排序：升序重置为 true；切到「随机」时立刻生成一个新种子
+  /// - 同一种排序再点一次（asc == null）：切换升降序；随机排序下则换一批
+  /// - 状态会异步落盘，下次启动自动恢复
   void setSort(SortMode m, {bool? asc}) {
-    if (asc != null) sortAscending = asc;
-    if (m == sortMode && asc == null) {
-      sortAscending = !sortAscending;
+    if (m != _sortMode) {
+      _sortMode = m;
+      _sortAscending = asc ?? true;
+      if (m == SortMode.random) listSortSeed = _newSeed();
+      unawaited(settings.setArchiveSortIndex(m.index));
+      unawaited(settings.setArchiveSortAscending(_sortAscending));
+    } else if (asc != null) {
+      if (asc != _sortAscending) {
+        _sortAscending = asc;
+        unawaited(settings.setArchiveSortAscending(asc));
+      }
+    } else if (m == SortMode.random) {
+      listSortSeed = _newSeed();
     } else {
-      sortMode = m;
+      _sortAscending = !_sortAscending;
+      unawaited(settings.setArchiveSortAscending(_sortAscending));
     }
+    notifyListeners();
+  }
+
+  /// 换一批随机顺序（压缩包列表）
+  void reshuffleArchives() {
+    if (_sortMode != SortMode.random) {
+      _sortMode = SortMode.random;
+      unawaited(settings.setArchiveSortIndex(SortMode.random.index));
+    }
+    listSortSeed = _newSeed();
     notifyListeners();
   }
 
